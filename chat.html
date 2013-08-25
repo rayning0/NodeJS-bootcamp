@@ -1,0 +1,50 @@
+<ul data-bind="foreach: messages">
+    <li data-bind="text: $data"></li>
+</ul>
+<input type="text" data-bind="value: currentMessage" />
+<input type="submit" value="Send" data-bind="click: sendMessage" />
+
+<div data-bind="foreach: cursors">
+    <div data-bind="style: { top: y, left: x }, attr: { id: id }" style="position: absolute;">A</div>
+</div>
+
+<script src="http://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js"></script>
+<script src="http://knockoutjs.com/downloads/knockout-2.2.1.js"></script>
+<script src="/socket.io/socket.io.js"></script>
+<script>
+    var model = { 
+        messages: ko.observableArray(),
+        cursors: ko.observableArray(),
+        currentMessage: ko.observable(''),
+        sendMessage: function() {
+        if(model.currentMessage().length > 0) {
+                socket.emit('message', model.currentMessage());
+                model.currentMessage('');
+            }
+        }
+    };
+
+    ko.applyBindings(model);
+
+    var socket = io.connect();
+    socket.on('message', function (data) {
+        model.messages.push(data);
+    });
+
+    socket.on('mouse-location', function(data) {
+        var cursor = ko.utils.arrayFirst(model.cursors(), function(cursor) {
+            console.log(data.id);
+            return cursor.id == data.id;
+        });
+
+        if(cursor != null) {
+            model.cursors.remove(cursor);
+        }
+
+        model.cursors.push({ id: data.id, x: data.x, y: data.y });
+    });
+
+    $(document).mousemove(function(e) {
+        socket.emit('mouse-location', { x: e.pageX, y: e.pageY });
+    });
+</script>
